@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: axitrax_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: axitrax
+      POSTGRES_USER: axitrax_user
+      POSTGRES_PASSWORD: axitrax_pass
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: axitrax_redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

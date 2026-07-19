@@ -1,0 +1,353 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── MULTI-TENANT ROOT ───────────────────────────────────────────────────────
+
+model Gym {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users              User[]
+  members            Member[]
+  trainers           Trainer[]
+  membershipPlans    MembershipPlan[]
+  workoutPlans       WorkoutPlan[]
+  dietPlans          DietPlan[]
+  reminders          Reminder[]
+
+  @@map("gyms")
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  TRAINER
+  MEMBER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  gymId        String?
+  name         String
+  email        String
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  gym          Gym?     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  member       Member?
+  trainer      Trainer?
+  createdWorkoutPlans WorkoutPlan[]
+  createdDietPlans    DietPlan[]
+
+  @@unique([name, email])
+  @@index([gymId])
+  @@map("users")
+}
+
+// ─── MEMBERS ──────────────────────────────────────────────────────────────────
+
+enum MembershipStatus {
+  ACTIVE
+  DUE
+  EXPIRED
+}
+
+model Member {
+  id                          String           @id @default(uuid())
+  gymId                       String?
+  userId                      String           @unique
+  trainerId                   String?
+  membershipPlanId            String?
+  name                        String
+  phone                       String?
+  email                       String
+  goal                        String?
+  status                      MembershipStatus @default(ACTIVE)
+  startDate                   DateTime?
+  renewalDate                 DateTime?
+  amountPaid                  Float            @default(0)
+  discount                    Float            @default(0)
+  dateOfBirth                 DateTime?
+  gender                      String?
+  heightFeet                  Float?
+  weightKg                    Float?
+  bodyFatPercent              Float?
+  location                    String?
+  emergencyContactName        String?
+  emergencyContactPhone       String?
+  emergencyContactRelationship String?
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  gym             Gym?             @relation(fields: [gymId], references: [id], onDelete: SetNull)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainer         Trainer?         @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  membershipPlan  MembershipPlan?  @relation(fields: [membershipPlanId], references: [id], onDelete: SetNull)
+  attendanceLogs  AttendanceLog[]
+  workoutAssignments WorkoutAssignment[]
+  dietAssignments    DietAssignment[]
+
+  @@index([gymId])
+  @@index([trainerId])
+  @@map("members")
+}
+
+// ─── TRAINERS ─────────────────────────────────────────────────────────────────
+
+model Trainer {
+  id             String   @id @default(uuid())
+  gymId          String
+  userId         String   @unique
+  name           String
+  phone          String?
+  email          String
+  specialization String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  gym     Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members Member[]
+
+  @@index([gymId])
+  @@map("trainers")
+}
+
+// ─── MEMBERSHIP PLANS ─────────────────────────────────────────────────────────
+
+enum DurationType {
+  DAYS
+  MONTHS
+}
+
+model MembershipPlan {
+  id            String       @id @default(uuid())
+  gymId         String
+  name          String
+  durationValue Int
+  durationType  DurationType @default(MONTHS)
+  price         Float
+  perks         String[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  gym     Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  members Member[]
+
+  @@index([gymId])
+  @@map("membership_plans")
+}
+
+// ─── WORKOUT PLANS ────────────────────────────────────────────────────────────
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model WorkoutPlan {
+  id              String   @id @default(uuid())
+  gymId           String
+  createdByUserId String?
+  title           String
+  level           String?
+  focus           String?
+  repeatWeeks     Int      @default(4)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gym         Gym                @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdBy   User?              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  days        WorkoutPlanDay[]
+  assignments WorkoutAssignment[]
+
+  @@index([gymId])
+  @@index([createdByUserId])
+  @@map("workout_plans")
+}
+
+model WorkoutPlanDay {
+  id              String   @id @default(uuid())
+  workoutPlanId   String
+  weekday         Weekday
+  title           String?
+  durationMinutes Int      @default(45)
+
+  workoutPlan WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  exercises   Exercise[]
+
+  @@unique([workoutPlanId, weekday])
+  @@map("workout_plan_days")
+}
+
+model Exercise {
+  id               String         @id @default(uuid())
+  workoutPlanDayId String
+  name             String
+  reps             String?
+  rest             String?
+  orderIndex       Int            @default(0)
+
+  workoutPlanDay WorkoutPlanDay @relation(fields: [workoutPlanDayId], references: [id], onDelete: Cascade)
+
+  @@index([workoutPlanDayId])
+  @@map("exercises")
+}
+
+model WorkoutAssignment {
+  id        String   @id @default(uuid())
+  memberId  String
+  planId    String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  member Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan   WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("workout_assignments")
+}
+
+// ─── DIET PLANS ───────────────────────────────────────────────────────────────
+
+enum DietGoal {
+  LOSS
+  GAIN
+  MAINTENANCE
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACKS
+}
+
+model DietPlan {
+  id              String   @id @default(uuid())
+  gymId           String
+  createdByUserId String?
+  name            String
+  goal            DietGoal @default(MAINTENANCE)
+  targetCalories  Int      @default(2000)
+  repeatWeeks     Int      @default(4)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gym         Gym             @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdBy   User?           @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  days        DietPlanDay[]
+  assignments DietAssignment[]
+
+  @@index([gymId])
+  @@index([createdByUserId])
+  @@map("diet_plans")
+}
+
+model DietPlanDay {
+  id         String   @id @default(uuid())
+  dietPlanId String
+  weekday    Weekday
+
+  dietPlan DietPlan    @relation(fields: [dietPlanId], references: [id], onDelete: Cascade)
+  meals    MealEntry[]
+
+  @@unique([dietPlanId, weekday])
+  @@map("diet_plan_days")
+}
+
+model MealEntry {
+  id            String    @id @default(uuid())
+  dietPlanDayId String
+  mealType      MealType
+
+  dietPlanDay DietPlanDay @relation(fields: [dietPlanDayId], references: [id], onDelete: Cascade)
+  items       MealItem[]
+
+  @@map("meal_entries")
+}
+
+model MealItem {
+  id          String    @id @default(uuid())
+  mealEntryId String
+  name        String
+  quantity    String?
+  calories    Int       @default(0)
+
+  mealEntry MealEntry @relation(fields: [mealEntryId], references: [id], onDelete: Cascade)
+
+  @@index([mealEntryId])
+  @@map("meal_items")
+}
+
+model DietAssignment {
+  id        String   @id @default(uuid())
+  memberId  String
+  planId    String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  member Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan   DietPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("diet_assignments")
+}
+
+// ─── ATTENDANCE ───────────────────────────────────────────────────────────────
+
+enum AttendanceType {
+  IN
+  OUT
+}
+
+model AttendanceLog {
+  id        String         @id @default(uuid())
+  memberId  String
+  type      AttendanceType
+  timestamp DateTime       @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([timestamp])
+  @@map("attendance_logs")
+}
+
+// ─── REMINDERS ────────────────────────────────────────────────────────────────
+
+model Reminder {
+  id          String   @id @default(uuid())
+  gymId       String
+  audience    Role
+  title       String
+  description String?
+  timeLabel   String?
+  createdAt   DateTime @default(now())
+
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId])
+  @@map("reminders")
+}
