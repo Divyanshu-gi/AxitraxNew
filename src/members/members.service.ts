@@ -36,7 +36,7 @@ export class MembersService {
 
     const passwordHash = await bcrypt.hash(dto.password ?? dto.email, 12);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         gymId,
         name: dto.name,
@@ -67,8 +67,10 @@ export class MembersService {
           },
         },
       },
-      include: { member: true },
+      include: { member: { include: { membershipPlan: true, trainer: true } } },
     });
+
+    return user.member;
   }
 
   async update(gymId: string, id: string, dto: UpdateMemberDto) {

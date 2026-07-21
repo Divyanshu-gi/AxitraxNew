@@ -34,3 +34,7 @@ export class CreateWorkoutAssignmentDto {
   @IsString() startDate: string;
   @IsString() endDate: string;
 }
+
+export class LogWorkoutDayDto {
+  @IsString() date: string;
+}

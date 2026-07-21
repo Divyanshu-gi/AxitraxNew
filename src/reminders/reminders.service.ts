@@ -9,7 +9,11 @@ export class RemindersService {
 
   async findAll(gymId: string, role: Role) {
     return this.prisma.reminder.findMany({
-      where: { gymId, ...(role === 'MEMBER' ? { audience: 'MEMBER' as Role } : {}) },
+      where: {
+        gymId,
+        ...(role === 'MEMBER' ? { audience: 'MEMBER' as Role } : {}),
+        ...(role === 'TRAINER' ? { audience: { in: ['TRAINER', 'MEMBER'] as Role[] } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

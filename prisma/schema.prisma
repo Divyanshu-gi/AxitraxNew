@@ -18,13 +18,13 @@ model Gym {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users              User[]
-  members            Member[]
-  trainers           Trainer[]
-  membershipPlans    MembershipPlan[]
-  workoutPlans       WorkoutPlan[]
-  dietPlans          DietPlan[]
-  reminders          Reminder[]
+  users           User[]
+  members         Member[]
+  trainers        Trainer[]
+  membershipPlans MembershipPlan[]
+  workoutPlans    WorkoutPlan[]
+  dietPlans       DietPlan[]
+  reminders       Reminder[]
 
   @@map("gyms")
 }
@@ -47,9 +47,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  gym          Gym?     @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  member       Member?
-  trainer      Trainer?
+  gym                 Gym?          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  member              Member?
+  trainer             Trainer?
   createdWorkoutPlans WorkoutPlan[]
   createdDietPlans    DietPlan[]
 
@@ -67,39 +67,42 @@ enum MembershipStatus {
 }
 
 model Member {
-  id                          String           @id @default(uuid())
-  gymId                       String?
-  userId                      String           @unique
-  trainerId                   String?
-  membershipPlanId            String?
-  name                        String
-  phone                       String?
-  email                       String
-  goal                        String?
-  status                      MembershipStatus @default(ACTIVE)
-  startDate                   DateTime?
-  renewalDate                 DateTime?
-  amountPaid                  Float            @default(0)
-  discount                    Float            @default(0)
-  dateOfBirth                 DateTime?
-  gender                      String?
-  heightFeet                  Float?
-  weightKg                    Float?
-  bodyFatPercent              Float?
-  location                    String?
-  emergencyContactName        String?
-  emergencyContactPhone       String?
+  id                           String           @id @default(uuid())
+  gymId                        String?
+  userId                       String           @unique
+  trainerId                    String?
+  membershipPlanId             String?
+  name                         String
+  phone                        String?
+  email                        String
+  goal                         String?
+  status                       MembershipStatus @default(ACTIVE)
+  startDate                    DateTime?
+  renewalDate                  DateTime?
+  amountPaid                   Float            @default(0)
+  discount                     Float            @default(0)
+  dateOfBirth                  DateTime?
+  gender                       String?
+  heightFeet                   Float?
+  weightKg                     Float?
+  bodyFatPercent               Float?
+  location                     String?
+  emergencyContactName         String?
+  emergencyContactPhone        String?
   emergencyContactRelationship String?
-  createdAt                   DateTime         @default(now())
-  updatedAt                   DateTime         @updatedAt
+  createdAt                    DateTime         @default(now())
+  updatedAt                    DateTime         @updatedAt
 
-  gym             Gym?             @relation(fields: [gymId], references: [id], onDelete: SetNull)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trainer         Trainer?         @relation(fields: [trainerId], references: [id], onDelete: SetNull)
-  membershipPlan  MembershipPlan?  @relation(fields: [membershipPlanId], references: [id], onDelete: SetNull)
-  attendanceLogs  AttendanceLog[]
+  gym                Gym?                @relation(fields: [gymId], references: [id], onDelete: SetNull)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainer            Trainer?            @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  membershipPlan     MembershipPlan?     @relation(fields: [membershipPlanId], references: [id], onDelete: SetNull)
+  attendanceLogs     AttendanceLog[]
   workoutAssignments WorkoutAssignment[]
   dietAssignments    DietAssignment[]
+  bodyMeasurements   BodyMeasurement[]
+  workoutDayLogs     WorkoutDayLog[]
+  dietMealLogs       DietMealLog[]
 
   @@index([gymId])
   @@index([trainerId])
@@ -175,8 +178,8 @@ model WorkoutPlan {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  gym         Gym                @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  createdBy   User?              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  gym         Gym                 @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdBy   User?               @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   days        WorkoutPlanDay[]
   assignments WorkoutAssignment[]
 
@@ -186,11 +189,11 @@ model WorkoutPlan {
 }
 
 model WorkoutPlanDay {
-  id              String   @id @default(uuid())
+  id              String  @id @default(uuid())
   workoutPlanId   String
   weekday         Weekday
   title           String?
-  durationMinutes Int      @default(45)
+  durationMinutes Int     @default(45)
 
   workoutPlan WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
   exercises   Exercise[]
@@ -200,12 +203,12 @@ model WorkoutPlanDay {
 }
 
 model Exercise {
-  id               String         @id @default(uuid())
+  id               String  @id @default(uuid())
   workoutPlanDayId String
   name             String
   reps             String?
   rest             String?
-  orderIndex       Int            @default(0)
+  orderIndex       Int     @default(0)
 
   workoutPlanDay WorkoutPlanDay @relation(fields: [workoutPlanDayId], references: [id], onDelete: Cascade)
 
@@ -221,11 +224,27 @@ model WorkoutAssignment {
   endDate   DateTime
   createdAt DateTime @default(now())
 
-  member Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  plan   WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  member  Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan    WorkoutPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  dayLogs WorkoutDayLog[]
 
   @@index([memberId])
   @@map("workout_assignments")
+}
+
+model WorkoutDayLog {
+  id           String   @id @default(uuid())
+  memberId     String
+  assignmentId String
+  date         DateTime
+  createdAt    DateTime @default(now())
+
+  member     Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  assignment WorkoutAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, date])
+  @@index([memberId])
+  @@map("workout_day_logs")
 }
 
 // ─── DIET PLANS ───────────────────────────────────────────────────────────────
@@ -254,8 +273,8 @@ model DietPlan {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  gym         Gym             @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  createdBy   User?           @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  gym         Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdBy   User?            @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   days        DietPlanDay[]
   assignments DietAssignment[]
 
@@ -265,7 +284,7 @@ model DietPlan {
 }
 
 model DietPlanDay {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   dietPlanId String
   weekday    Weekday
 
@@ -277,22 +296,23 @@ model DietPlanDay {
 }
 
 model MealEntry {
-  id            String    @id @default(uuid())
+  id            String   @id @default(uuid())
   dietPlanDayId String
   mealType      MealType
 
-  dietPlanDay DietPlanDay @relation(fields: [dietPlanDayId], references: [id], onDelete: Cascade)
+  dietPlanDay DietPlanDay   @relation(fields: [dietPlanDayId], references: [id], onDelete: Cascade)
   items       MealItem[]
+  logs        DietMealLog[]
 
   @@map("meal_entries")
 }
 
 model MealItem {
-  id          String    @id @default(uuid())
+  id          String  @id @default(uuid())
   mealEntryId String
   name        String
   quantity    String?
-  calories    Int       @default(0)
+  calories    Int     @default(0)
 
   mealEntry MealEntry @relation(fields: [mealEntryId], references: [id], onDelete: Cascade)
 
@@ -308,11 +328,29 @@ model DietAssignment {
   endDate   DateTime
   createdAt DateTime @default(now())
 
-  member Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  plan   DietPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  member   Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan     DietPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  mealLogs DietMealLog[]
 
   @@index([memberId])
   @@map("diet_assignments")
+}
+
+model DietMealLog {
+  id           String   @id @default(uuid())
+  memberId     String
+  assignmentId String
+  mealEntryId  String
+  date         DateTime
+  createdAt    DateTime @default(now())
+
+  member     Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  assignment DietAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  mealEntry  MealEntry      @relation(fields: [mealEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, date, mealEntryId])
+  @@index([memberId])
+  @@map("diet_meal_logs")
 }
 
 // ─── ATTENDANCE ───────────────────────────────────────────────────────────────
@@ -333,6 +371,23 @@ model AttendanceLog {
   @@index([memberId])
   @@index([timestamp])
   @@map("attendance_logs")
+}
+
+// ─── BODY MEASUREMENTS ────────────────────────────────────────────────────────
+
+model BodyMeasurement {
+  id             String   @id @default(uuid())
+  memberId       String
+  weightKg       Float?
+  bodyFatPercent Float?
+  note           String?
+  recordedAt     DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([recordedAt])
+  @@map("body_measurements")
 }
 
 // ─── REMINDERS ────────────────────────────────────────────────────────────────

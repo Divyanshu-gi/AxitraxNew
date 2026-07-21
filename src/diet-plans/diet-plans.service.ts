@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateDietPlanDto, UpdateDietPlanDto, CreateDietAssignmentDto } from './dto/diet-plan.dto';
 import { Role } from '@prisma/client';
 
+const toDateOnly = (dateStr: string) => new Date(`${dateStr.slice(0, 10)}T00:00:00.000Z`);
+
 @Injectable()
 export class DietPlansService {
   constructor(private prisma: PrismaService) {}
@@ -133,5 +135,48 @@ export class DietPlansService {
     });
     if (!assignment) throw new NotFoundException('Assignment not found');
     return this.prisma.dietAssignment.delete({ where: { id: assignmentId } });
+  }
+
+  // ── Meal logs (adherence tracking) ─────────────────────────────────────────
+
+  private async getAccessibleAssignment(gymId: string, assignmentId: string, role?: Role, userId?: string) {
+    const assignment = await this.prisma.dietAssignment.findFirst({
+      where: {
+        id: assignmentId,
+        member: {
+          gymId,
+          ...(role === 'MEMBER' ? { userId } : {}),
+          ...(role === 'TRAINER' ? { trainer: { userId } } : {}),
+        },
+      },
+    });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    return assignment;
+  }
+
+  async logMeal(gymId: string, assignmentId: string, dateStr: string, mealEntryId: string, role?: Role, userId?: string) {
+    const assignment = await this.getAccessibleAssignment(gymId, assignmentId, role, userId);
+    const date = toDateOnly(dateStr);
+    return this.prisma.dietMealLog.upsert({
+      where: { assignmentId_date_mealEntryId: { assignmentId: assignment.id, date, mealEntryId } },
+      create: { assignmentId: assignment.id, memberId: assignment.memberId, date, mealEntryId },
+      update: {},
+    });
+  }
+
+  async unlogMeal(gymId: string, assignmentId: string, dateStr: string, mealEntryId: string, role?: Role, userId?: string) {
+    const assignment = await this.getAccessibleAssignment(gymId, assignmentId, role, userId);
+    await this.prisma.dietMealLog.deleteMany({
+      where: { assignmentId: assignment.id, date: toDateOnly(dateStr), mealEntryId },
+    });
+    return { success: true };
+  }
+
+  async getMealLogs(gymId: string, assignmentId: string, role?: Role, userId?: string) {
+    const assignment = await this.getAccessibleAssignment(gymId, assignmentId, role, userId);
+    return this.prisma.dietMealLog.findMany({
+      where: { assignmentId: assignment.id },
+      orderBy: { date: 'asc' },
+    });
   }
 }

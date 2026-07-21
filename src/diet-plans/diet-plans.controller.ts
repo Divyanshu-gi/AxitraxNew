@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { DietPlansService } from './diet-plans.service';
-import { CreateDietPlanDto, UpdateDietPlanDto, CreateDietAssignmentDto } from './dto/diet-plan.dto';
+import { CreateDietPlanDto, UpdateDietPlanDto, CreateDietAssignmentDto, LogDietMealDto } from './dto/diet-plan.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -58,5 +58,28 @@ export class DietPlansController {
   @Roles('ADMIN', 'TRAINER')
   removeAssignment(@CurrentUser() user: User, @Param('id') id: string) {
     return this.plans.removeAssignment(user.gymId, id);
+  }
+
+  @Post('assignments/:assignmentId/meal-logs')
+  @Roles('ADMIN', 'TRAINER', 'MEMBER')
+  logMeal(@CurrentUser() user: User, @Param('assignmentId') assignmentId: string, @Body() dto: LogDietMealDto) {
+    return this.plans.logMeal(user.gymId, assignmentId, dto.date, dto.mealEntryId, user.role, user.id);
+  }
+
+  @Delete('assignments/:assignmentId/meal-logs')
+  @Roles('ADMIN', 'TRAINER', 'MEMBER')
+  unlogMeal(
+    @CurrentUser() user: User,
+    @Param('assignmentId') assignmentId: string,
+    @Query('date') date: string,
+    @Query('mealEntryId') mealEntryId: string,
+  ) {
+    return this.plans.unlogMeal(user.gymId, assignmentId, date, mealEntryId, user.role, user.id);
+  }
+
+  @Get('assignments/:assignmentId/meal-logs')
+  @Roles('ADMIN', 'TRAINER', 'MEMBER')
+  getMealLogs(@CurrentUser() user: User, @Param('assignmentId') assignmentId: string) {
+    return this.plans.getMealLogs(user.gymId, assignmentId, user.role, user.id);
   }
 }

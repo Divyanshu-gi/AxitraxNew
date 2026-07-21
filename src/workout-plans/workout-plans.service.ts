@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkoutPlanDto, UpdateWorkoutPlanDto, CreateWorkoutAssignmentDto } from './dto/workout-plan.dto';
 import { Role } from '@prisma/client';
 
+const toDateOnly = (dateStr: string) => new Date(`${dateStr.slice(0, 10)}T00:00:00.000Z`);
+
 @Injectable()
 export class WorkoutPlansService {
   constructor(private prisma: PrismaService) {}
@@ -128,5 +130,48 @@ export class WorkoutPlansService {
     });
     if (!assignment) throw new NotFoundException('Assignment not found');
     return this.prisma.workoutAssignment.delete({ where: { id: assignmentId } });
+  }
+
+  // ── Day logs (adherence tracking) ──────────────────────────────────────────
+
+  private async getAccessibleAssignment(gymId: string, assignmentId: string, role?: Role, userId?: string) {
+    const assignment = await this.prisma.workoutAssignment.findFirst({
+      where: {
+        id: assignmentId,
+        member: {
+          gymId,
+          ...(role === 'MEMBER' ? { userId } : {}),
+          ...(role === 'TRAINER' ? { trainer: { userId } } : {}),
+        },
+      },
+    });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    return assignment;
+  }
+
+  async logDay(gymId: string, assignmentId: string, dateStr: string, role?: Role, userId?: string) {
+    const assignment = await this.getAccessibleAssignment(gymId, assignmentId, role, userId);
+    const date = toDateOnly(dateStr);
+    return this.prisma.workoutDayLog.upsert({
+      where: { assignmentId_date: { assignmentId: assignment.id, date } },
+      create: { assignmentId: assignment.id, memberId: assignment.memberId, date },
+      update: {},
+    });
+  }
+
+  async unlogDay(gymId: string, assignmentId: string, dateStr: string, role?: Role, userId?: string) {
+    const assignment = await this.getAccessibleAssignment(gymId, assignmentId, role, userId);
+    await this.prisma.workoutDayLog.deleteMany({
+      where: { assignmentId: assignment.id, date: toDateOnly(dateStr) },
+    });
+    return { success: true };
+  }
+
+  async getDayLogs(gymId: string, assignmentId: string, role?: Role, userId?: string) {
+    const assignment = await this.getAccessibleAssignment(gymId, assignmentId, role, userId);
+    return this.prisma.workoutDayLog.findMany({
+      where: { assignmentId: assignment.id },
+      orderBy: { date: 'asc' },
+    });
   }
 }

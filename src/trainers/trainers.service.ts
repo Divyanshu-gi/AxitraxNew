@@ -32,7 +32,7 @@ export class TrainersService {
 
     const passwordHash = await bcrypt.hash(dto.password ?? 'Trainer1234', 12);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         gymId,
         name: dto.name,
@@ -51,6 +51,8 @@ export class TrainersService {
       },
       include: { trainer: true },
     });
+
+    return user.trainer;
   }
 
   async update(gymId: string, id: string, dto: UpdateTrainerDto) {

@@ -37,3 +37,8 @@ export class CreateDietAssignmentDto {
   @IsString() startDate: string;
   @IsString() endDate: string;
 }
+
+export class LogDietMealDto {
+  @IsString() date: string;
+  @IsString() mealEntryId: string;
+}

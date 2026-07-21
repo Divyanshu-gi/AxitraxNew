@@ -29,6 +29,12 @@ export class AttendanceController {
     return this.attendance.getToday(user.gymId, memberId);
   }
 
+  @Get('counts')
+  @Roles('ADMIN', 'TRAINER')
+  getCounts(@CurrentUser() user: User) {
+    return this.attendance.getCounts(user.gymId, user.role, user.id);
+  }
+
   @Get(':memberId/history')
   @Roles('ADMIN', 'TRAINER', 'MEMBER')
   getHistory(
