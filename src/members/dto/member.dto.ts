@@ -23,7 +23,29 @@ export class CreateMemberDto {
   @IsString() @IsOptional() password?: string;
 }
 
-export class UpdateMemberDto extends CreateMemberDto {}
+// Deliberately not `extends CreateMemberDto` — a partial update (e.g. renewing
+// membership) shouldn't be forced to resend name/email just to satisfy
+// CreateMemberDto's required fields.
+export class UpdateMemberDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() goal?: string;
+  @IsOptional() @IsUUID() trainerId?: string;
+  @IsOptional() @IsUUID() membershipPlanId?: string;
+  @IsOptional() @IsEnum(MembershipStatus) status?: MembershipStatus;
+  @IsOptional() @IsString() startDate?: string;
+  @IsOptional() @IsString() renewalDate?: string;
+  @IsOptional() @IsNumber() amountPaid?: number;
+  @IsOptional() @IsNumber() discount?: number;
+  @IsOptional() @IsString() dateOfBirth?: string;
+  @IsOptional() @IsString() gender?: string;
+  @IsOptional() @IsNumber() heightFeet?: number;
+  @IsOptional() @IsNumber() weightKg?: number;
+  @IsOptional() @IsString() emergencyContactName?: string;
+  @IsOptional() @IsString() emergencyContactPhone?: string;
+  @IsOptional() @IsString() emergencyContactRelationship?: string;
+}
 
 export class UpdateMemberProfileDto {
   @IsOptional() @IsString() name?: string;
