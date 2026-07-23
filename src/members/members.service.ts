@@ -29,25 +29,26 @@ export class MembersService {
   }
 
   async create(gymId: string, dto: CreateMemberDto) {
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({
-      where: { name_email: { name: dto.name, email: dto.email } },
+      where: { name_email: { name: dto.name, email } },
     });
     if (existing) throw new ConflictException('A user with this email already exists in this gym');
 
-    const passwordHash = await bcrypt.hash(dto.password ?? dto.email, 12);
+    const passwordHash = await bcrypt.hash(dto.password ?? email, 12);
 
     const user = await this.prisma.user.create({
       data: {
         gymId,
         name: dto.name,
-        email: dto.email,
+        email,
         passwordHash,
         role: 'MEMBER',
         member: {
           create: {
             gymId,
             name: dto.name,
-            email: dto.email,
+            email,
             phone: dto.phone,
             goal: dto.goal,
             trainerId: dto.trainerId,
@@ -111,20 +112,22 @@ export class MembersService {
     const member = await this.prisma.member.findUnique({ where: { userId } });
     if (!member) throw new NotFoundException('Member profile not found');
 
+    const email = dto.email ? dto.email.trim().toLowerCase() : undefined;
+
     try {
       const [, updatedMember] = await this.prisma.$transaction([
         this.prisma.user.update({
           where: { id: userId },
           data: {
             ...(dto.name ? { name: dto.name } : {}),
-            ...(dto.email ? { email: dto.email } : {}),
+            ...(email ? { email } : {}),
           },
         }),
         this.prisma.member.update({
           where: { id: member.id },
           data: {
             name: dto.name,
-            email: dto.email,
+            email,
             phone: dto.phone,
             dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
             gender: dto.gender,
@@ -153,7 +156,8 @@ export class MembersService {
   }
 
   async linkByEmail(gymId: string, dto: LinkMemberDto) {
-    const user = await this.prisma.user.findFirst({ where: { email: dto.email, role: 'MEMBER' } });
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({ where: { email, role: 'MEMBER' } });
     if (!user) throw new NotFoundException('No member account found with this email. Ask them to register in the app first.');
 
     const existingMember = await this.prisma.member.findUnique({ where: { userId: user.id } });

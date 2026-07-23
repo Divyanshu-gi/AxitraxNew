@@ -14,7 +14,10 @@ export class AuthService {
   ) {}
 
   async registerGym(dto: RegisterGymDto) {
-    const existing = await this.prisma.gym.findUnique({ where: { email: dto.gymEmail } });
+    const gymEmail = dto.gymEmail.trim().toLowerCase();
+    const adminEmail = dto.adminEmail.trim().toLowerCase();
+
+    const existing = await this.prisma.gym.findUnique({ where: { email: gymEmail } });
     if (existing) throw new ConflictException('A gym with this email already exists');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -22,11 +25,11 @@ export class AuthService {
     const gym = await this.prisma.gym.create({
       data: {
         name: dto.gymName,
-        email: dto.gymEmail,
+        email: gymEmail,
         users: {
           create: {
             name: dto.adminName,
-            email: dto.adminEmail,
+            email: adminEmail,
             passwordHash,
             role: 'ADMIN',
           },
@@ -40,8 +43,9 @@ export class AuthService {
   }
 
   async registerMember(dto: RegisterMemberDto) {
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({
-      where: { name_email: { name: dto.name, email: dto.email } },
+      where: { name_email: { name: dto.name, email } },
     });
     if (existing) throw new ConflictException('An account with this name and email already exists.');
 
@@ -50,13 +54,13 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
-        email: dto.email,
+        email,
         passwordHash,
         role: 'MEMBER',
         member: {
           create: {
             name: dto.name,
-            email: dto.email,
+            email,
           },
         },
       },
@@ -66,8 +70,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { name_email: { name: dto.name, email: dto.email } },
+      where: { name_email: { name: dto.name, email } },
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 

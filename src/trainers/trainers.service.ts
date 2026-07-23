@@ -25,8 +25,9 @@ export class TrainersService {
   }
 
   async create(gymId: string, dto: CreateTrainerDto) {
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({
-      where: { name_email: { name: dto.name, email: dto.email } },
+      where: { name_email: { name: dto.name, email } },
     });
     if (existing) throw new ConflictException('A user with this email already exists in this gym');
 
@@ -36,14 +37,14 @@ export class TrainersService {
       data: {
         gymId,
         name: dto.name,
-        email: dto.email,
+        email,
         passwordHash,
         role: 'TRAINER',
         trainer: {
           create: {
             gymId,
             name: dto.name,
-            email: dto.email,
+            email,
             phone: dto.phone,
             specialization: dto.specialization,
           },
