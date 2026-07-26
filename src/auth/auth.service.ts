@@ -39,7 +39,7 @@ export class AuthService {
     });
 
     const adminUser = gym.users[0];
-    return this.signTokens(adminUser.id, gym.id, 'ADMIN');
+    return this.signTokens(adminUser.id, gym.id, 'ADMIN', adminUser.email);
   }
 
   async registerMember(dto: RegisterMemberDto) {
@@ -66,7 +66,7 @@ export class AuthService {
       },
     });
 
-    return this.signTokens(user.id, null, 'MEMBER');
+    return this.signTokens(user.id, null, 'MEMBER', user.email);
   }
 
   async login(dto: LoginDto) {
@@ -79,7 +79,7 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    return this.signTokens(user.id, user.gymId, user.role);
+    return this.signTokens(user.id, user.gymId, user.role, user.email);
   }
 
   async refresh(refreshToken: string) {
@@ -97,10 +97,10 @@ export class AuthService {
 
     // Re-read gymId/role from the DB rather than the old token payload, so a
     // member linked to a gym after their last login picks up gymId on refresh.
-    return this.signTokens(user.id, user.gymId, user.role);
+    return this.signTokens(user.id, user.gymId, user.role, user.email);
   }
 
-  private signTokens(userId: string, gymId: string | null, role: string) {
+  private signTokens(userId: string, gymId: string | null, role: string, email: string) {
     const payload = { sub: userId, gymId, role };
 
     const accessToken = this.jwt.sign(payload, {
@@ -113,6 +113,9 @@ export class AuthService {
       expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN'),
     });
 
-    return { accessToken, refreshToken, role, gymId };
+    const superAdminEmail = this.config.get<string>('SUPER_ADMIN_EMAIL');
+    const isSuperAdmin = !!superAdminEmail && email.toLowerCase() === superAdminEmail.toLowerCase();
+
+    return { accessToken, refreshToken, role, gymId, isSuperAdmin };
   }
 }

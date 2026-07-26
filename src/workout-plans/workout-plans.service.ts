@@ -2,19 +2,50 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkoutPlanDto, UpdateWorkoutPlanDto, CreateWorkoutAssignmentDto } from './dto/workout-plan.dto';
 import { Role } from '@prisma/client';
+import { ExerciseVideosService } from '../exercise-videos/exercise-videos.service';
+import { slugify } from '../common/slugify';
 
 const toDateOnly = (dateStr: string) => new Date(`${dateStr.slice(0, 10)}T00:00:00.000Z`);
 
 @Injectable()
 export class WorkoutPlansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private exerciseVideos: ExerciseVideosService,
+  ) {}
+
+  // Attaches the shared catalog's video/thumbnail/duration to each exercise
+  // by slugified name — every gym's copy of "Barbell Bench Press" resolves
+  // to the same clip the super-admin uploaded once, with no per-row storage.
+  private async withVideoData<T extends {days: {exercises: {name: string}[]}[]}>(plan: T): Promise<T>;
+  private async withVideoData<T extends {days: {exercises: {name: string}[]}[]}>(plans: T[]): Promise<T[]>;
+  private async withVideoData(planOrPlans: any) {
+    const videoMap = await this.exerciseVideos.mapBySlug();
+    const attach = (plan: any) => ({
+      ...plan,
+      days: plan.days.map((day: any) => ({
+        ...day,
+        exercises: day.exercises.map((ex: any) => {
+          const video = videoMap.get(slugify(ex.name));
+          return {
+            ...ex,
+            videoUrl: video?.videoUrl,
+            thumbnailUrl: video?.thumbnailUrl ?? undefined,
+            durationSeconds: video?.durationSeconds ?? undefined,
+          };
+        }),
+      })),
+    });
+    return Array.isArray(planOrPlans) ? planOrPlans.map(attach) : attach(planOrPlans);
+  }
 
   async findAll(gymId: string, role: Role, userId: string) {
-    return this.prisma.workoutPlan.findMany({
+    const plans = await this.prisma.workoutPlan.findMany({
       where: { gymId, ...(role === 'TRAINER' ? { createdByUserId: userId } : {}) },
       include: { days: { include: { exercises: { orderBy: { orderIndex: 'asc' } } } } },
       orderBy: { createdAt: 'desc' },
     });
+    return this.withVideoData(plans);
   }
 
   async findOne(gymId: string, id: string, role?: Role, userId?: string) {
@@ -23,7 +54,7 @@ export class WorkoutPlansService {
       include: { days: { include: { exercises: { orderBy: { orderIndex: 'asc' } } } } },
     });
     if (!plan) throw new NotFoundException('Workout plan not found');
-    return plan;
+    return this.withVideoData(plan);
   }
 
   async create(gymId: string, createdByUserId: string, dto: CreateWorkoutPlanDto) {

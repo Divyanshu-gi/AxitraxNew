@@ -27,3 +27,19 @@ services:
         value: 30d
       - key: NODE_VERSION
         value: 20.20.2
+      # Cloudflare R2 + super-admin allowlist — values set manually in the
+      # Render dashboard (Environment tab), not synced from this file.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_PUBLIC_BASE_URL
+        sync: false
+      - key: SUPER_ADMIN_EMAIL
+        sync: false

@@ -216,6 +216,23 @@ model Exercise {
   @@map("exercises")
 }
 
+// A single shared video per exercise NAME, reused by every gym's copy of
+// that exercise — not tied to any gym or specific Exercise row. Managed only
+// by the platform super-admin (see SUPER_ADMIN_EMAIL); workout-plans reads
+// join against this by slugified exercise name to attach playback URLs.
+model ExerciseVideo {
+  id              String   @id @default(uuid())
+  exerciseSlug    String   @unique
+  exerciseName    String
+  videoUrl        String
+  thumbnailUrl    String?
+  durationSeconds Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("exercise_videos")
+}
+
 model WorkoutAssignment {
   id        String   @id @default(uuid())
   memberId  String
